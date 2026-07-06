@@ -87,7 +87,16 @@ jobs:
           real=$(realpath $path)
           echo "Apply patches in $real to frida/subprojects/$name"
           cd subprojects/$name
-          git am ../../../patches/$name/*.patch
+          for patch in ../../../patches/$name/*.patch; do
+            patch_name=$(basename "$patch")
+            # Skip Frida 17.x-only patches that don't apply to 16.5.7
+            if [ "$patch_name" = "0009-Florida-memfd-name-jit-cache.patch" ]; then
+              echo "SKIP: $patch_name (requires Frida 17.x)"
+              continue
+            fi
+            echo "Applying: $patch_name"
+            git am "$patch" || { echo "FAILED on $patch_name, trying 3-way merge..."; git am -3 "$patch" || { echo "STILL FAILED, aborting"; git am --abort; exit 1; } }
+          done
           cd ../..
         done
         cd ..
